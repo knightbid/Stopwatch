@@ -1,0 +1,5 @@
+{
+  "name": "ChronoPulse",
+  "description": "A versatile stopwatch and countdown timer with bomb-mode audio feedback and customizable themes.",
+  "requestFramePermissions": []
+}
