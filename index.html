@@ -10,26 +10,202 @@
         theme: {
           extend: {
             fontFamily: {
-              mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', 'monospace'],
+              sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
+              mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Courier New", "monospace"],
             },
+            animation: {
+              'fade-in-up': 'fadeInUp 0.3s ease-out forwards',
+            },
+            keyframes: {
+              fadeInUp: {
+                '0%': { opacity: '0', transform: 'translateY(10px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              }
+            }
           },
         },
       }
     </script>
-  <script type="importmap">
-{
-  "imports": {
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
-</head>
-  <body>
-    <div id="root"></div>
-  <script type="module" src="/index.tsx"></script>
-</body>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+      
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      
+      /* Pure custom smooth scrollbar for laps */
+      ::-webkit-scrollbar {
+        width: 4px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(155, 155, 155, 0.2);
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(155, 155, 155, 0.4);
+      }
+    </style>
+  </head>
+  <body class="transition-colors duration-500 overflow-hidden bg-[#09090b] text-[#e4e4e7]">
+    <div id="app" class="min-h-screen flex flex-col items-center relative select-none">
+      
+      <!-- Ambient Grid Background Decor -->
+      <div class="absolute inset-0 pointer-events-none opacity-5">
+         <div id="bg-decor" class="absolute top-0 left-0 w-full h-full" style="background-image: radial-gradient(#f43f5e 1px, transparent 1px); background-size: 40px 40px;"></div>
+      </div>
+
+      <!-- Main App Content -->
+      <main id="main-container" class="flex-grow flex flex-col items-center justify-center w-full z-10">
+        
+        <!-- Interactive Timer Zone -->
+        <div id="timer-interactive-zone" class="cursor-pointer transition-all duration-150 flex flex-col items-center">
+          <div id="timer-display-box" class="font-mono font-bold tabular-nums tracking-tighter flex items-baseline text-[13vw] sm:text-[14vw] md:text-[8.5rem] leading-none transition-all duration-150">
+            <span id="hr-segment" class="hidden"><span id="hr-val">00</span><span class="opacity-40 px-1">:</span></span>
+            <span id="min-val">00</span>
+            <span class="opacity-40 px-1">:</span>
+            <span id="sec-val">30</span>
+            <span id="ms-val" class="align-baseline ml-3 font-medium text-[0.45em] text-[#f43f5e]">.00</span>
+          </div>
+
+          <!-- Pulsing Glowing Progress Arc / Line -->
+          <div id="progress-track" class="h-1.5 w-72 md:w-96 rounded-full bg-white/10 overflow-hidden relative mt-6 transition-opacity duration-300">
+            <div id="progress-bar" class="absolute h-full left-0 top-0 rounded-full transition-all duration-75 ease-out shadow-[0_0_12px_rgba(244,63,94,1)] bg-[#f43f5e]" style="width: 100%;"></div>
+          </div>
+        </div>
+
+        <!-- Controls HUD Interface (Fades out in Fullscreen) -->
+        <div id="controls-hud" class="mt-8 flex flex-col items-center gap-6 w-full px-4 animate-fade-in-up">
+          
+          <!-- Primary Actions (Play, Reset/Lap, Maximize) -->
+          <div class="flex justify-center items-center gap-6">
+            
+            <!-- Reset Button or Lap Splitter (Contextual) -->
+            <button id="btn-reset" class="p-4 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg flex items-center justify-center bg-white/10 text-white" title="Reset (R)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            </button>
+            <button id="btn-lap" class="p-4 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg hidden items-center justify-center bg-white/10 text-white border border-white/10" title="Record Lap (L)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 4 11 10 15 16 5 16 5 4"/><line x1="5" y1="16" x2="5" y2="20"/></svg>
+            </button>
+
+            <!-- Big Master Play Button -->
+            <button id="btn-play-pause" class="p-7 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-20 flex items-center justify-center border-4 border-[#f43f5e] bg-[#f43f5e] text-[#09090b] shadow-[0_0_25px_rgba(244,63,94,0.4)]" title="Start / Pause (Space)">
+              <svg id="svg-play" class="block ml-1" xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+              <svg id="svg-pause" class="hidden" xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></svg>
+            </button>
+
+            <!-- Mode-based Overlay / Settings popup or Fullscreen -->
+            <button id="btn-fullscreen" class="p-4 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg flex items-center justify-center bg-white/10 text-white" title="Fullscreen (F)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 3 6 3-3 6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
+            </button>
+          </div>
+
+          <!-- Quick Increment Presets for Countdown Mode -->
+          <div id="presets-panel" class="flex justify-center flex-wrap gap-2 mt-1">
+            <button data-offset="-60000" class="preset-btn px-3 py-1 text-xs font-mono font-semibold rounded-full border border-white/10 text-white hover:bg-white/5 active:scale-95">-1m</button>
+            <button data-offset="-10000" class="preset-btn px-3 py-1 text-xs font-mono font-semibold rounded-full border border-white/10 text-white hover:bg-white/5 active:scale-95">-10s</button>
+            <button data-offset="10000" class="preset-btn px-3 py-1 text-xs font-mono font-semibold rounded-full border border-white/10 text-white hover:bg-white/5 active:scale-95">+10s</button>
+            <button data-offset="60000" class="preset-btn px-3 py-1 text-xs font-mono font-semibold rounded-full border border-white/10 text-white hover:bg-white/5 active:scale-95">+1m</button>
+            <button data-offset="300000" class="preset-btn px-3 py-1 text-xs font-mono font-semibold rounded-full border border-white/10 text-white hover:bg-white/5 active:scale-95">+5m</button>
+          </div>
+
+          <!-- Segment Controls: Mode Switch & Settings Toggle -->
+          <div class="flex justify-center gap-4 mt-2">
+            <div class="flex rounded-lg overflow-hidden border border-white/20 select-none">
+              <button id="mode-stopwatch" class="px-5 py-2 text-sm font-semibold transition-all duration-200 bg-[#f43f5e] text-[#09090b]">
+                Stopwatch
+              </button>
+              <button id="mode-countdown" class="px-5 py-2 text-sm font-semibold transition-all duration-200 hover:bg-white/5 text-white">
+                Countdown
+              </button>
+            </div>
+            
+            <button id="btn-settings-open" class="p-3 border border-white/20 rounded-lg hover:bg-white/5 active:scale-95 select-none" title="Countdown Setup">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+          </div>
+
+          <!-- Laps Split Board Split Box (Only seen in Stopwatch with logs) -->
+          <div id="laps-board" class="mt-2 w-full max-w-md p-4 rounded-xl border border-white/10 backdrop-blur-sm bg-white/5 flex flex-col max-h-48 hidden animate-fade-in-up">
+            <div class="flex justify-between items-center text-[10px] uppercase tracking-wider opacity-50 px-2 pb-2 border-b border-white/5 font-mono">
+              <span>Split Lap</span>
+              <span>Timestamp</span>
+            </div>
+            <div id="laps-list" class="overflow-y-auto mt-2 space-y-1 pr-1 flex-grow font-mono">
+              <!-- Dynamically populated splits -->
+            </div>
+          </div>
+
+          <!-- Modern Theme Center -->
+          <div class="mt-4 border-t border-white/10 pt-6 w-full max-w-lg">
+            <p class="text-center mb-4 text-xs uppercase tracking-widest opacity-60 font-medium">Select Theme</p>
+            
+            <!-- Presets buttons mapping -->
+            <div id="themes-grid" class="flex flex-wrap justify-center gap-2 mb-4">
+              <!-- JS will auto populate themes -->
+            </div>
+            
+            <!-- Real-time Custom Theme Colors customizer (collapsible or static) -->
+            <div id="custom-theme-builder" class="p-3.5 rounded-xl border border-white/5 bg-white/[0.02] flex items-center justify-between gap-4 max-w-md mx-auto hidden animate-fade-in-up">
+              <span class="text-xs font-semibold uppercase tracking-wider text-white/70">Custom Colors</span>
+              <div class="flex items-center gap-3">
+                <label class="flex items-center gap-1.5 text-xs text-white/60">
+                  Bg:
+                  <input type="color" id="picker-bg" class="w-7 h-7 bg-transparent border-0 cursor-pointer rounded-full p-0 overflow-hidden" value="#202020">
+                </label>
+                <label class="flex items-center gap-1.5 text-xs text-white/60">
+                  Text:
+                  <input type="color" id="picker-text" class="w-7 h-7 bg-transparent border-0 cursor-pointer rounded-full p-0 overflow-hidden" value="#ffffff">
+                </label>
+                <label class="flex items-center gap-1.5 text-xs text-white/60">
+                  Accent:
+                  <input type="color" id="picker-accent" class="w-7 h-7 bg-transparent border-0 cursor-pointer rounded-full p-0 overflow-hidden" value="#fbbf24">
+                </label>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </main>
+
+      <!-- Advanced Countdown Config Setup Panel dialog -->
+      <div id="modal-settings" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm hidden">
+        <div id="modal-card" class="p-8 rounded-2xl shadow-2xl w-full max-w-sm border border-[#f43f5e] relative bg-[#09090b] text-[#e4e4e7] animate-fade-in-up">
+          <button id="btn-settings-close" class="absolute top-4 right-4 opacity-70 hover:opacity-100 text-white">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+          
+          <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Countdown Setup
+          </h2>
+          
+          <div class="flex gap-4 mb-6">
+            <div class="flex-1">
+              <label class="block text-xs uppercase tracking-wider mb-2 opacity-70">Minutes</label>
+              <input type="number" id="input-minutes" min="0" max="59" value="0" class="w-full bg-transparent border-b-2 border-[#f43f5e] text-2xl font-mono focus:outline-none p-2 text-white" />
+            </div>
+            <div class="flex-1">
+              <label class="block text-xs uppercase tracking-wider mb-2 opacity-70">Seconds</label>
+              <input type="number" id="input-seconds" min="0" max="59" value="30" class="w-full bg-transparent border-b-2 border-[#f43f5e] text-2xl font-mono focus:outline-none p-2 text-white" />
+            </div>
+          </div>
+
+          <button id="btn-settings-save" class="w-full py-3 rounded-xl font-bold uppercase tracking-wider transition-transform active:scale-95 bg-[#f43f5e] text-[#09090b]" style="box-shadow: 0 0 15px rgba(244,63,94,0.3)">
+            Save & Set
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Fullscreen Floating Helper hint -->
+      <div id="fullscreen-helper" class="fixed bottom-10 text-white/20 text-sm pointer-events-none hidden font-medium uppercase tracking-widest text-center">
+        Space: Play/Pause &bull; R: Reset &bull; ESC: Exit
+      </div>
+
+    </div>
+    
+    <script type="module" src="/index.tsx"></script>
+  </body>
 </html>
