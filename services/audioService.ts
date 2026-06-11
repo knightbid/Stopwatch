@@ -18,19 +18,22 @@ class AudioService {
     this.init();
     if (!this.audioContext || !this.gainNode) return;
 
+    if (frequency <= 0) return; // Silent warmup or zero-frequency guard
+
     const oscillator = this.audioContext.createOscillator();
     oscillator.type = type;
     oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
     
-    // Connect to gain node
-    oscillator.connect(this.gainNode);
+    // Create an individual gain node specifically for this oscillator
+    // to shape its envelope without affecting other concurrent audio sources
+    const individualGain = this.audioContext.createGain();
+    oscillator.connect(individualGain);
+    individualGain.connect(this.gainNode);
 
-    // Envelope to avoid clicking
     const now = this.audioContext.currentTime;
-    // this.gainNode.gain.cancelScheduledValues(now);
-    // this.gainNode.gain.setValueAtTime(0, now);
-    // this.gainNode.gain.linearRampToValueAtTime(0.5, now + 0.01);
-    // this.gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    individualGain.gain.setValueAtTime(0, now);
+    individualGain.gain.linearRampToValueAtTime(0.4, now + 0.005); // Rapid slick attack
+    individualGain.gain.exponentialRampToValueAtTime(0.001, now + duration); // Smooth decay
 
     oscillator.start(now);
     oscillator.stop(now + duration);

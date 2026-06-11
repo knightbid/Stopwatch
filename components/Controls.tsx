@@ -1,6 +1,6 @@
 import React from 'react';
 import { Theme, TimerMode } from '../types';
-import { Play, Pause, RotateCcw, Maximize, Settings, AlarmClock } from 'lucide-react';
+import { Play, Pause, RotateCcw, Maximize, Settings, AlarmClock, Flag } from 'lucide-react';
 
 interface ControlsProps {
   isActive: boolean;
@@ -11,6 +11,8 @@ interface ControlsProps {
   onModeChange: (mode: TimerMode) => void;
   onFullScreen: () => void;
   onSettings: () => void;
+  onLap?: () => void;
+  onAdjustDuration?: (ms: number) => void;
 }
 
 const Controls: React.FC<ControlsProps> = ({
@@ -22,22 +24,35 @@ const Controls: React.FC<ControlsProps> = ({
   onModeChange,
   onFullScreen,
   onSettings,
+  onLap,
+  onAdjustDuration,
 }) => {
   const buttonBaseClass = "p-4 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg flex items-center justify-center";
 
   return (
-    <div className="flex flex-col gap-8 w-full max-w-2xl">
+    <div className="flex flex-col gap-6 w-full max-w-2xl">
       
       {/* Primary Transport Controls */}
       <div className="flex justify-center items-center gap-6">
-        <button
-          onClick={onReset}
-          className={`${buttonBaseClass} opacity-80 hover:opacity-100`}
-          style={{ backgroundColor: `${theme.colors.text}20`, color: theme.colors.text }}
-          title="Reset"
-        >
-          <RotateCcw size={24} />
-        </button>
+        {mode === TimerMode.STOPWATCH && isActive ? (
+          <button
+            onClick={onLap}
+            className={`${buttonBaseClass} opacity-90 hover:opacity-100 animate-pulse`}
+            style={{ backgroundColor: `${theme.colors.accent}20`, color: theme.colors.accent, border: `1px solid ${theme.colors.accent}40` }}
+            title="Record Lap"
+          >
+            <Flag size={24} className="animate-bounce" />
+          </button>
+        ) : (
+          <button
+            onClick={onReset}
+            className={`${buttonBaseClass} opacity-80 hover:opacity-100`}
+            style={{ backgroundColor: `${theme.colors.text}20`, color: theme.colors.text }}
+            title="Reset"
+          >
+            <RotateCcw size={24} />
+          </button>
+        )}
 
         <button
           onClick={onToggleActive}
@@ -45,7 +60,8 @@ const Controls: React.FC<ControlsProps> = ({
           style={{ 
             backgroundColor: isActive ? theme.colors.bg : theme.colors.accent,
             color: isActive ? theme.colors.accent : theme.colors.bg,
-            border: `4px solid ${theme.colors.accent}`
+            border: `4px solid ${theme.colors.accent}`,
+            boxShadow: isActive ? 'none' : `0 0 25px ${theme.colors.accent}60`,
           }}
           title={isActive ? "Pause" : "Start"}
         >
@@ -62,8 +78,37 @@ const Controls: React.FC<ControlsProps> = ({
         </button>
       </div>
 
+      {/* Quick Presets for Countdown Mode */}
+      {mode === TimerMode.COUNTDOWN && onAdjustDuration && (
+        <div className="flex justify-center flex-wrap gap-2 animate-fade-in-up mt-1">
+          {[-60000, -10000, 10000, 60000, 300000].map((offsetMs) => {
+            const sign = offsetMs > 0 ? '+' : '';
+            const magnitude = Math.abs(offsetMs);
+            const label = magnitude >= 60000 
+              ? `${magnitude / 60000}m` 
+              : `${magnitude / 1000}s`;
+            const displayLabel = `${sign}${offsetMs < 0 ? '-' : ''}${label}`;
+
+            return (
+              <button
+                key={offsetMs}
+                onClick={() => onAdjustDuration(offsetMs)}
+                className="px-3 py-1 text-xs font-mono font-semibold rounded-full border transition-all duration-150 hover:scale-105 active:scale-95"
+                style={{ 
+                  borderColor: `${theme.colors.text}30`, 
+                  color: theme.colors.text,
+                  backgroundColor: `${theme.colors.text}08`
+                }}
+              >
+                {displayLabel}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Secondary Mode & Settings */}
-      <div className="flex justify-center gap-4">
+      <div className="flex justify-center gap-4 mt-2">
         <div className="flex rounded-lg overflow-hidden border border-opacity-20" style={{ borderColor: theme.colors.text }}>
             <button 
                 onClick={() => onModeChange(TimerMode.STOPWATCH)}

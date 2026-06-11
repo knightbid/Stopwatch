@@ -20,12 +20,13 @@ const App: React.FC = () => {
   const [timeMs, setTimeMs] = useState<number>(0);
   const [isActive, setIsActive] = useState<boolean>(false);
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
+  const [laps, setLaps] = useState<number[]>([]);
   
   // Countdown config
   const [countdownDuration, setCountdownDuration] = useState<number>(DEFAULT_COUNTDOWN_TIME);
   const [showSettings, setShowSettings] = useState<boolean>(false);
-  const [inputMinutes, setInputMinutes] = useState<string>("1");
-  const [inputSeconds, setInputSeconds] = useState<string>("0");
+  const [inputMinutes, setInputMinutes] = useState<string>("0");
+  const [inputSeconds, setInputSeconds] = useState<string>("30");
 
   // Refs for accurate timing
   const intervalRef = useRef<number | null>(null);
@@ -128,8 +129,33 @@ const App: React.FC = () => {
     }
   }, [isActive, mode, timeMs, countdownDuration, handleTimerComplete, handleCountdownAudio, stopTimer]);
 
+  const recordLap = useCallback(() => {
+    if (isActive && mode === TimerMode.STOPWATCH) {
+      setLaps((prev) => [...prev, timeMs]);
+      audioService.playBeep(920, 'sine', 0.08); // Sweet chime chime on custom laps!
+    }
+  }, [isActive, mode, timeMs]);
+
+  const adjustDuration = useCallback((offsetMs: number) => {
+    if (mode === TimerMode.COUNTDOWN) {
+      setTimeMs((prevTime) => {
+        const nextTime = Math.max(1000, prevTime + offsetMs);
+        if (isActive) {
+          initialTimeRef.current = nextTime;
+          startTimeRef.current = Date.now();
+        }
+        return nextTime;
+      });
+      if (!isActive) {
+        setCountdownDuration((prev) => Math.max(1000, prev + offsetMs));
+      }
+      audioService.playBeep(640, 'sine', 0.05);
+    }
+  }, [isActive, mode]);
+
   const resetTimer = useCallback(() => {
     stopTimer();
+    setLaps([]);
     if (mode === TimerMode.STOPWATCH) {
       setTimeMs(0);
     } else {
@@ -140,6 +166,7 @@ const App: React.FC = () => {
   const changeMode = (newMode: TimerMode) => {
     stopTimer();
     setMode(newMode);
+    setLaps([]);
     if (newMode === TimerMode.STOPWATCH) {
       setTimeMs(0);
     } else {
@@ -150,20 +177,30 @@ const App: React.FC = () => {
   // --- Keyboard Shortcuts ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Only active in Full Screen
-      if (!isFullScreen) return;
+      // Ignore when input elements are active to prevent conflict
+      if (
+        document.activeElement?.tagName === 'INPUT' || 
+        document.activeElement?.tagName === 'TEXTAREA' ||
+        document.activeElement?.hasAttribute('contenteditable')
+      ) {
+        return;
+      }
 
       if (e.code === 'Space') {
-        e.preventDefault(); // Prevent scrolling
+        e.preventDefault(); // Stop normal scrolling behavior
         toggleTimer();
       } else if (e.code === 'KeyR') {
         resetTimer();
+      } else if (e.code === 'KeyL' && mode === TimerMode.STOPWATCH) {
+        recordLap();
+      } else if (e.code === 'KeyF') {
+        toggleFullScreen();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFullScreen, toggleTimer, resetTimer]);
+  }, [toggleTimer, resetTimer, recordLap, mode, isFullScreen]);
 
   // --- Full Screen Logic ---
   const toggleFullScreen = () => {
@@ -235,12 +272,19 @@ const App: React.FC = () => {
             onClick={isFullScreen ? toggleFullScreen : undefined}
             className={`${isFullScreen ? 'cursor-pointer' : ''}`}
         >
-             <TimerDisplay timeMs={timeMs} theme={theme} isFullScreen={isFullScreen} />
+             <TimerDisplay 
+               timeMs={timeMs} 
+               theme={theme} 
+               isFullScreen={isFullScreen} 
+               mode={mode}
+               countdownDuration={countdownDuration}
+               isActive={isActive}
+             />
         </div>
 
         {/* Controls - Hidden in Full Screen */}
         {!isFullScreen && (
-          <div className="mt-12 flex flex-col items-center gap-8 w-full px-4 animate-fade-in-up">
+          <div className="mt-8 flex flex-col items-center gap-6 w-full px-4 animate-fade-in-up">
             <Controls
               isActive={isActive}
               mode={mode}
@@ -250,9 +294,52 @@ const App: React.FC = () => {
               onModeChange={changeMode}
               onFullScreen={toggleFullScreen}
               onSettings={() => setShowSettings(true)}
+              onLap={recordLap}
+              onAdjustDuration={adjustDuration}
             />
+
+            {/* Stopwatch Laps panel */}
+            {mode === TimerMode.STOPWATCH && laps.length > 0 && (
+              <div 
+                className="mt-2 w-full max-w-md p-4 rounded-xl border border-opacity-10 backdrop-blur-sm shadow-inner overflow-hidden max-h-48 flex flex-col"
+                style={{ 
+                  backgroundColor: `${theme.colors.text}05`, 
+                  borderColor: `${theme.colors.text}10`,
+                  color: theme.colors.text 
+                }}
+              >
+                <div className="flex justify-between items-center text-[10px] uppercase tracking-wider opacity-50 px-2 pb-2 border-b border-white/5 font-mono">
+                  <span>Split Lap</span>
+                  <span>Timestamp</span>
+                </div>
+                <div className="overflow-y-auto mt-2 space-y-1 pr-1 flex-grow scrollbar-thin">
+                  {laps.slice().reverse().map((lapTimeMs, index) => {
+                    const actualLapNum = laps.length - index;
+                    
+                    const formatLap = (ms: number) => {
+                      const totalSecs = Math.floor(ms / 1000);
+                      const m = Math.floor(totalSecs / 60);
+                      const s = totalSecs % 60;
+                      const c = Math.floor((ms % 1000) / 10);
+                      const pad = (n: number) => n.toString().padStart(2, '0');
+                      return `${pad(m)}:${pad(s)}.${pad(c)}`;
+                    };
+
+                    return (
+                      <div 
+                        key={actualLapNum} 
+                        className="flex justify-between items-center text-sm px-2 py-1 rounded-lg hover:bg-white/5 transition-all font-mono tabular-nums"
+                      >
+                        <span className="font-semibold opacity-70">Lap {actualLapNum}</span>
+                        <span className="opacity-95">{formatLap(lapTimeMs)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             
-            <div className="mt-8 border-t border-opacity-20 pt-8 w-full max-w-lg" style={{ borderColor: theme.colors.text }}>
+            <div className="mt-4 border-t border-opacity-10 pt-6 w-full max-w-lg" style={{ borderColor: `${theme.colors.text}20` }}>
                 <p className="text-center mb-4 text-xs uppercase tracking-widest opacity-60">Select Theme</p>
                 <ThemeSelector 
                   currentTheme={theme} 

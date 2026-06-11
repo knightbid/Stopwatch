@@ -48,4 +48,4 @@ export const THEMES: Theme[] = [
   },
 ];
 
-export const DEFAULT_COUNTDOWN_TIME = 60 * 1000; // 1 minute in ms
+export const DEFAULT_COUNTDOWN_TIME = 30 * 1000; // 30 seconds in ms
