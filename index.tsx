@@ -115,10 +115,16 @@ function bindEvents() {
   // Global key bindings
   window.addEventListener('keydown', handleKeyboard);
 
-  // Native resize/fullscreen listeners
-  document.addEventListener('fullscreenchange', () => {
-    setFullScreenState(!!document.fullscreenElement);
-  });
+  // Native resize/fullscreen listeners with cross-browser prefixes
+  const onFullScreenChange = () => {
+    const doc = document as any;
+    const fsElement = doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement;
+    setFullScreenState(!!fsElement);
+  };
+  document.addEventListener('fullscreenchange', onFullScreenChange);
+  document.addEventListener('webkitfullscreenchange', onFullScreenChange);
+  document.addEventListener('mozfullscreenchange', onFullScreenChange);
+  document.addEventListener('MSFullscreenChange', onFullScreenChange);
 }
 
 // --- Display Formatter View Updater ---
@@ -625,22 +631,54 @@ function handleKeyboard(e: KeyboardEvent) {
     recordLap();
   } else if (e.code === 'KeyF') {
     toggleFullScreen();
+  } else if (e.code === 'Escape') {
+    if (isFullScreen) {
+      toggleFullScreen();
+    }
   }
 }
 
 // --- Full Screen Logic Manager ---
 function toggleFullScreen() {
-  if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen().then(() => {
+  const docEl = document.documentElement as any;
+  const doc = document as any;
+
+  const requestFS = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+  const exitFS = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+  const fsElement = doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement;
+
+  if (!fsElement) {
+    if (requestFS) {
+      try {
+        const promise = requestFS.call(docEl);
+        if (promise && typeof promise.then === 'function') {
+          promise.then(() => {
+            setFullScreenState(true);
+          }).catch((err: any) => {
+            console.warn("Fullscreen permission denied:", err);
+            // Simulated fallback on promise error
+            setFullScreenState(true);
+          });
+        } else {
+          setFullScreenState(true);
+        }
+      } catch (e) {
+        console.warn("Fullscreen request error:", e);
+        setFullScreenState(true);
+      }
+    } else {
+      // Simulated fullscreen fallback for iOS/Safari where document element FS is unsupported
       setFullScreenState(true);
-    }).catch(err => {
-      console.error(`Error attempting to enable full-screen mode: ${err.message}`);
-    });
-  } else {
-    if (document.exitFullscreen) {
-      document.exitFullscreen();
-      setFullScreenState(false);
     }
+  } else {
+    if (exitFS) {
+      try {
+        exitFS.call(doc);
+      } catch (e) {
+        console.warn("Exit fullscreen error:", e);
+      }
+    }
+    setFullScreenState(false);
   }
 }
 
