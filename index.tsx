@@ -24,7 +24,13 @@ let startTime: number = 0;
 let initialTime: number = 0;
 
 // --- DOM Initial Handler & Event Wiring ---
-window.addEventListener('DOMContentLoaded', () => {
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+  initializeApp();
+}
+
+function initializeApp() {
   // Bind standard layout elements
   bindEvents();
   
@@ -33,7 +39,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Set initial mode configuration
   changeMode(TimerMode.STOPWATCH);
-});
+}
 
 function bindEvents() {
   // Play button click
